@@ -36,7 +36,7 @@
             font-weight: bold;
             color: #bdbdbd;
         }
-        /* Input is now READONLY to block keyboard, but still accepts JS value */
+        /* Input remains READONLY for voice-first approach */
         input {
             width: calc(100% - 22px);
             padding: 12px;
@@ -242,7 +242,7 @@
         <label for="roundInput" id="roundLabel">Enter Round Multiplier (Actual Result):</label>
         
         <div style="display: flex; align-items: center;">
-            <input type="text" id="roundInput" placeholder="Example: 1.50 or 8.23" style="margin-bottom: 0;" readonly inputmode="none">
+            <input type="number" id="roundInput" step="0.01" placeholder="Example: 1.50 or 8.23" style="margin-bottom: 0;" readonly inputmode="decimal"> 
             <button id="micBtn" style="width: auto; padding: 12px 15px; margin-bottom: 0;">🎤</button>
         </div>
 
@@ -307,7 +307,7 @@
         const MIC_BUTTON_DEFAULT_COLOR = '#2196F3'; 
         const MIC_BUTTON_RECORDING_COLOR = '#FF0000'; 
 
-        // --- CORE FUNCTIONS (NO LOGIC CHANGE) ---
+        // --- CORE FUNCTIONS ---
 
         function getZone(multiplier) {
             if (multiplier >= 10.00) return 'Orange Zone (Jackpot)';
@@ -432,20 +432,21 @@
             riskAssessmentEl.textContent = message;
         }
 
-        // --- HANDLERS (FIXED FOR READONLY INPUT) ---
+        // --- HANDLERS ---
 
-        // Helper function to update readonly input value (for Voice Input/Undo)
+        // Helper function to update readonly input value 
         function updateInputValue(value) {
              roundInput.removeAttribute('readonly'); 
-             // Use .setAttribute to prevent triggering unwanted keyboard popups on some phones
-             roundInput.setAttribute('value', value); 
+             roundInput.value = value;
              roundInput.setAttribute('readonly', 'readonly'); 
         }
 
         function logCurrentRound() {
              // Retrieve value directly from the attribute or property
-             // No need to remove readonly here since we rely on the JS value set by Voice Input or Undo
+             // N.B.: The keyboard will pop up here if the user focuses on the input manually.
+             roundInput.removeAttribute('readonly'); 
              const inputValue = parseFloat(roundInput.value); 
+             roundInput.setAttribute('readonly', 'readonly'); 
              
             if (isNaN(inputValue) || inputValue < 1.00) {
                 systemMessageEl.textContent = "Please enter a valid multiplier (>= 1.00).";
@@ -519,7 +520,7 @@
         });
 
 
-        // --- VOICE INPUT LOGIC (Uses readonly and inputmode="none") ---
+        // --- VOICE INPUT LOGIC (Best attempt at cross-platform compatibility) ---
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
         if (SpeechRecognition) {
@@ -533,6 +534,7 @@
                 micBtn.textContent = '🔴 SPEAK';
                 systemMessageEl.textContent = "Listening...";
                 recognition.start();
+                // We trust 'readonly' to block keyboard, and JS to insert value
             });
 
             recognition.onresult = (event) => {
@@ -544,7 +546,7 @@
                 if (numberMatch) {
                     let multiplier = parseFloat(numberMatch[0]).toFixed(2);
                     
-                    updateInputValue(multiplier); // Set value without opening keyboard
+                    updateInputValue(multiplier); // Set value 
                     
                     const isAutoLogOn = autoLogToggle.checked;
 
