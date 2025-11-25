@@ -123,7 +123,7 @@
             text-align: center;
         }
 
-        /* RISK ASSESSMENT SECTION - Added Jackpot Alert Color */
+        /* RISK ASSESSMENT SECTION */
         #riskAssessment {
             background-color: #333;
             color: #fff;
@@ -277,6 +277,9 @@
         
         <div style="margin-top: 20px; padding: 15px; background-color: #2c2c2c; border-radius: 8px;">
             <label for="timeSearchInput" style="font-size: 16px;">Tafuta Historia Kulingana na Muda (HH:MM:SS):</label>
+            <p style="font-size: 12px; color: #8BC34A; margin: -10px 0 10px 0;">
+                **Auto-Search Iko ON**: Weka muda, itafanya kazi ikiufikia.
+            </p>
             <div style="display: flex; align-items: center; margin-top: 5px;">
                 <input type="text" id="timeSearchInput" placeholder="Mfano: 10:30:15" style="margin-bottom: 0; caret-color: white;" maxlength="8">
                 <button id="searchTimeButton" style="width: 100%; padding: 10px; background-color: #2196F3; color: white;">TAFUTA MULTIPLIER</button>
@@ -324,6 +327,9 @@
         const searchTimeButton = document.getElementById('searchTimeButton');
         const timeSearchResultEl = document.getElementById('timeSearchResult');
 
+        // Flag to prevent continuous auto-search at the same second
+        let autoSearchTriggered = false; 
+
         const MIC_BUTTON_DEFAULT_COLOR = '#2196F3'; 
         const MIC_BUTTON_RECORDING_COLOR = '#FF0000'; 
 
@@ -353,12 +359,16 @@
         
         function updateClock() {
             const now = new Date();
+            const currentTimeStr = formatTime(now); // HH:MM:SS
             const cycleSeconds = getCurrentCycleSeconds();
             
-            realTimeDisplayEl.textContent = formatTime(now); 
+            realTimeDisplayEl.textContent = currentTimeStr; 
             cycleTimeDisplayEl.textContent = `Cycle: ${getCycleTimeDisplay(cycleSeconds)}`;
 
             assessRiskByTime(cycleSeconds); 
+            
+            // NEW: Check for automatic search trigger
+            checkAutoSearch(currentTimeStr); 
         }
 
         function updateLearningStatus() {
@@ -423,7 +433,7 @@
                 const redPercent = (redCount / totalCount) * 100;
                 const orangePercent = (orangeCount / totalCount) * 100;
                 
-                // Priority 1: Jackpot Alert (EXTREMELY Sensitive: > 5%)
+                // Priority 1: Jackpot Alert (Sensitive: > 5%)
                 if (orangePercent > 5) { 
                     message = `💰 **JACKPOT INITIATION!** ${orangePercent.toFixed(0)}% hit 10.00x+ in this time-slice. BE READY!`;
                     riskAssessmentEl.style.backgroundColor = '#4CAF50'; // Green for money
@@ -447,7 +457,7 @@
             riskAssessmentEl.textContent = message;
         }
 
-        // --- HANDLERS (UNCHANGED) ---
+        // --- HANDLERS ---
 
         // Helper function to update readonly input value 
         function updateInputValue(value) {
@@ -532,8 +542,8 @@
             systemMessageEl.textContent = `Voice Auto-Log is now ${autoLogToggle.checked ? 'ON' : 'OFF'}.`;
         });
 
-        // --- TIME SEARCH LOGIC (UNCHANGED) ---
-        searchTimeButton.addEventListener('click', () => {
+        // --- TIME SEARCH LOGIC ---
+        function performTimeSearch() {
             const inputTime = timeSearchInput.value.trim();
             const timeMatch = inputTime.match(/^(\d{2}):(\d{2}):(\d{2})$/);
 
@@ -578,8 +588,43 @@
                 timeSearchResultEl.textContent = "No logged rounds found in history.";
                 timeSearchResultEl.style.color = '#E57373'; 
             }
-        });
+        }
+        
+        searchTimeButton.addEventListener('click', performTimeSearch);
         // --- END TIME SEARCH LOGIC ---
+
+        // NEW: AUTOMATIC TIME CHECKER
+        function checkAutoSearch(currentTimeStr) {
+            const targetTime = timeSearchInput.value.trim();
+            
+            if (!targetTime || targetTime.length !== 8) {
+                // Ignore if input is empty or invalid format
+                autoSearchTriggered = false;
+                searchTimeButton.disabled = false;
+                return;
+            }
+            
+            if (currentTimeStr === targetTime) {
+                if (!autoSearchTriggered) {
+                    searchTimeButton.disabled = true; // Disable manual click to prevent interference
+                    performTimeSearch();
+                    timeSearchResultEl.innerHTML += `<br>***UTO-SEARCH COMPLETE***`;
+                    autoSearchTriggered = true; 
+                }
+            } else {
+                // Reset trigger once the target second has passed
+                if (autoSearchTriggered) {
+                    // Only re-enable the button if the user modifies the time input
+                    // We keep it disabled unless the input is cleared/changed
+                    if (timeSearchInput.value.trim() !== targetTime) {
+                        searchTimeButton.disabled = false;
+                    }
+                }
+                autoSearchTriggered = false;
+                searchTimeButton.disabled = false;
+            }
+        }
+        // --- END AUTOMATIC TIME CHECKER ---
 
 
         // --- VOICE INPUT LOGIC (UNCHANGED) ---
