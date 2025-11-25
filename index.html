@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aviator Learning Log & Data Control with Risk Assessment</title>
     <style>
-        /* CSS STYLES (NO CHANGE) */
+        /* CSS STYLES (UNCHANGED) */
         body {
             font-family: 'Arial', sans-serif;
             background-color: #0d0d0d;
@@ -36,7 +36,7 @@
             font-weight: bold;
             color: #bdbdbd;
         }
-        /* Input remains READONLY for voice-first approach */
+        /* Input remains READONLY for voice-first approach, using type="number" */
         input {
             width: calc(100% - 22px);
             padding: 12px;
@@ -46,7 +46,15 @@
             background-color: #2c2c2c;
             color: #fff;
             font-size: 18px;
-            caret-color: transparent; /* Hide cursor */
+            caret-color: transparent; 
+        }
+        /* Style specifically for Time Input */
+        #timeSearchInput {
+            padding: 10px;
+            font-size: 16px;
+            width: 120px;
+            margin-right: 10px;
+            caret-color: white; /* Allow cursor for manual entry */
         }
         button {
             width: 100%;
@@ -115,7 +123,7 @@
             text-align: center;
         }
 
-        /* RISK ASSESSMENT SECTION */
+        /* RISK ASSESSMENT SECTION - Added Jackpot Alert Color */
         #riskAssessment {
             background-color: #333;
             color: #fff;
@@ -127,7 +135,7 @@
             text-align: center;
             font-size: 16px;
         }
-
+        
         /* Learning Status/Error Display */
         #learningStatusTop {
             font-size: 14px;
@@ -155,7 +163,7 @@
             padding-bottom: 5px;
             font-size: 18px;
         }
-        /* Adjusted history item layout to fit new columns */
+        /* Adjusted history item layout */
         .history-item {
             font-size: 14px;
             padding: 4px 0;
@@ -181,8 +189,7 @@
             display: block;
             margin-top: 5px;
         }
-
-        /* TOGGLE SWITCH STYLES (NO CHANGE) */
+        /* TOGGLE SWITCH STYLES (UNCHANGED) */
         .toggle-container {
             display: flex;
             justify-content: space-between;
@@ -267,9 +274,17 @@
             <button id="undoButton" style="width: 50%;">UNDO Last Round</button>
             <button id="resetButton" style="width: 50%;">RESET All Data</button>
         </div>
-
+        
+        <div style="margin-top: 20px; padding: 15px; background-color: #2c2c2c; border-radius: 8px;">
+            <label for="timeSearchInput" style="font-size: 16px;">Tafuta Historia Kulingana na Muda (HH:MM:SS):</label>
+            <div style="display: flex; align-items: center; margin-top: 5px;">
+                <input type="text" id="timeSearchInput" placeholder="Mfano: 10:30:15" style="margin-bottom: 0; caret-color: white;" maxlength="8">
+                <button id="searchTimeButton" style="width: 100%; padding: 10px; background-color: #2196F3; color: white;">TAFUTA MULTIPLIER</button>
+            </div>
+            <div class="message" id="timeSearchResult" style="font-size: 14px; margin-top: 10px;"></div>
+        </div>
         <div id="historyLog">
-            <h3>Round History: (Current | Next | Next-Next)</h3>
+            <h3>Round History: (Time | Round# | Multiplier | Cycle)</h3>
             <div id="historyList"></div>
         </div>
         
@@ -282,7 +297,7 @@
     <script>
         // --- GLOBAL VARIABLES & CONSTANTS ---
         const CYCLE_SECONDS = 720; 
-        const TIME_WINDOW_FOR_LEARNING = 90; 
+        const TIME_WINDOW_FOR_LEARNING = 60; // 60 seconds for high sensitivity 
         
         let totalRounds = parseInt(localStorage.getItem('aviator_totalRounds') || 0);
         let errors = parseInt(localStorage.getItem('aviator_errors') || 0); 
@@ -303,18 +318,16 @@
         const learningStatusTopEl = document.getElementById('learningStatusTop');
         const historyListEl = document.getElementById('historyList');
         const riskAssessmentEl = document.getElementById('riskAssessment');
+        
+        // NEW ELEMENTS FOR SEARCH
+        const timeSearchInput = document.getElementById('timeSearchInput');
+        const searchTimeButton = document.getElementById('searchTimeButton');
+        const timeSearchResultEl = document.getElementById('timeSearchResult');
 
         const MIC_BUTTON_DEFAULT_COLOR = '#2196F3'; 
         const MIC_BUTTON_RECORDING_COLOR = '#FF0000'; 
 
         // --- CORE FUNCTIONS ---
-
-        function getZone(multiplier) {
-            if (multiplier >= 10.00) return 'Orange Zone (Jackpot)';
-            if (multiplier >= 2.00) return 'Green Zone';
-            if (multiplier >= 1.00) return 'Red Zone';
-            return 'N/A';
-        }
 
         function getZoneClass(multiplier) {
             if (multiplier >= 10.00) return 'orange';
@@ -349,7 +362,6 @@
         }
 
         function updateLearningStatus() {
-            // FIX: Simplified learning status format
             learningStatusTopEl.innerHTML = 
                 `Total Rounds Logged: **${totalRounds}** | Logged Errors: **${errors}**`;
             undoButton.disabled = history.length === 0;
@@ -359,21 +371,14 @@
         }
 
         function renderHistory() {
-            historyListEl.innerHTML = history.map((item, i) => {
+            historyListEl.innerHTML = history.map((item) => {
                 const zoneClass = getZoneClass(parseFloat(item.actual));
-                
-                // LOGIC: Looking forward (based on array index position)
-                const nextRound = history[i - 1] ? history[i - 1].actual : 'N/A';
-                const nextRoundClass = history[i - 1] ? getZoneClass(parseFloat(history[i - 1].actual)) : 'na';
-                
-                const nextNextRound = history[i - 2] ? history[i - 2].actual : 'N/A';
-                const nextNextRoundClass = history[i - 2] ? getZoneClass(parseFloat(history[i - 2].actual)) : 'na';
+                const itemCycleTime = getCycleTimeDisplay(item.cycleSecond);
 
                 return `<div class="history-item">
                     [${item.time}] **R#${item.roundNum}**: 
                     <span class="zone-status ${zoneClass}">${item.actual}x</span> | 
-                    **NEXT**: <span class="zone-status ${nextRoundClass}">${nextRound}x</span> |
-                    **NEXT-NEXT**: <span class="zone-status ${nextNextRoundClass}">${nextNextRound}x</span>
+                    Cycle: ${itemCycleTime}
                 </div>`;
             }).join('');
         }
@@ -411,20 +416,30 @@
             
             let message = '';
             
-            if (totalCount < 5) { 
+            if (totalCount < 3) { 
                 message = `Caution: Insufficient data (${totalCount}) for risk analysis at this cycle time.`;
                 riskAssessmentEl.style.backgroundColor = '#555';
             } else {
                 const redPercent = (redCount / totalCount) * 100;
                 const orangePercent = (orangeCount / totalCount) * 100;
-
-                if (redPercent > 60) {
+                
+                // Priority 1: Jackpot Alert (EXTREMELY Sensitive: > 5%)
+                if (orangePercent > 5) { 
+                    message = `💰 **JACKPOT INITIATION!** ${orangePercent.toFixed(0)}% hit 10.00x+ in this time-slice. BE READY!`;
+                    riskAssessmentEl.style.backgroundColor = '#4CAF50'; // Green for money
+                } 
+                // Priority 2: High Risk Alert
+                else if (redPercent > 60) {
                     message = `🚨 **HIGH RISK!** ${redPercent.toFixed(0)}% crashed below 2.00x in this window.`;
-                    riskAssessmentEl.style.backgroundColor = '#E57373'; 
-                } else if (orangePercent > 10) {
-                    message = `💰 **JACKPOT STATS!** ${orangePercent.toFixed(0)}% hit 10.00x+ in this window.`;
-                    riskAssessmentEl.style.backgroundColor = '#4CAF50'; 
-                } else {
+                    riskAssessmentEl.style.backgroundColor = '#E57373'; // Red
+                } 
+                // Priority 3: Moderate Risk Alert
+                else if (redPercent > 40) { 
+                    message = `⚠️ **MODERATE RISK!** Red Zone Frequency: ${redPercent.toFixed(0)}% (Rounds: ${totalCount}).`;
+                    riskAssessmentEl.style.backgroundColor = '#FF9800'; // Orange/Yellow
+                } 
+                // Default: Normal Conditions
+                else {
                     message = `🟢 **NORMAL CONDITIONS.** (Rounds Found: ${totalCount})`;
                     riskAssessmentEl.style.backgroundColor = '#333'; 
                 }
@@ -432,7 +447,7 @@
             riskAssessmentEl.textContent = message;
         }
 
-        // --- HANDLERS ---
+        // --- HANDLERS (UNCHANGED) ---
 
         // Helper function to update readonly input value 
         function updateInputValue(value) {
@@ -442,8 +457,6 @@
         }
 
         function logCurrentRound() {
-             // Retrieve value directly from the attribute or property
-             // N.B.: The keyboard will pop up here if the user focuses on the input manually.
              roundInput.removeAttribute('readonly'); 
              const inputValue = parseFloat(roundInput.value); 
              roundInput.setAttribute('readonly', 'readonly'); 
@@ -464,7 +477,7 @@
                 time: formatTime(now),
                 cycleSecond: cycleSeconds, 
                 actual: actual,
-                zone: getZone(inputValue),
+                zone: getZoneClass(inputValue),
             };
             
             history.unshift(historyEntry);
@@ -474,7 +487,7 @@
 
             saveState();
             systemMessageEl.textContent = `Round #${totalRounds} logged: ${actual}x.`;
-            updateInputValue(''); // Clear the input display
+            updateInputValue(''); 
         }
 
         logButton.addEventListener('click', logCurrentRound);
@@ -492,7 +505,7 @@
                 
                 saveState();
                 systemMessageEl.textContent = `Last Round (${lastRound.actual}x) **UNDONE**. Total: ${totalRounds}`;
-                updateInputValue(lastRound.actual); // Set value back for review
+                updateInputValue(lastRound.actual); 
             } else {
                 systemMessageEl.textContent = "No rounds to undo.";
             }
@@ -519,8 +532,57 @@
             systemMessageEl.textContent = `Voice Auto-Log is now ${autoLogToggle.checked ? 'ON' : 'OFF'}.`;
         });
 
+        // --- TIME SEARCH LOGIC (UNCHANGED) ---
+        searchTimeButton.addEventListener('click', () => {
+            const inputTime = timeSearchInput.value.trim();
+            const timeMatch = inputTime.match(/^(\d{2}):(\d{2}):(\d{2})$/);
 
-        // --- VOICE INPUT LOGIC (Best attempt at cross-platform compatibility) ---
+            if (!timeMatch) {
+                timeSearchResultEl.textContent = "Error: Please enter time in HH:MM:SS format (e.g., 10:30:15).";
+                return;
+            }
+
+            const targetHour = parseInt(timeMatch[1]);
+            const targetMinute = parseInt(timeMatch[2]);
+            const targetSecond = parseInt(timeMatch[3]);
+
+            if (targetHour > 23 || targetMinute > 59 || targetSecond > 59) {
+                timeSearchResultEl.textContent = "Error: Invalid time values (e.g., hours > 23).";
+                return;
+            }
+
+            let closestRound = null;
+            let minTimeDifference = Infinity;
+
+            for (const item of history) {
+                const [h, m, s] = item.time.split(':').map(Number);
+                const loggedTotalSeconds = h * 3600 + m * 60 + s;
+                
+                const targetTotalSeconds = targetHour * 3600 + targetMinute * 60 + targetSecond;
+                
+                const difference = Math.abs(loggedTotalSeconds - targetTotalSeconds);
+
+                if (difference < minTimeDifference) {
+                    minTimeDifference = difference;
+                    closestRound = item;
+                }
+            }
+
+            if (closestRound) {
+                const zoneClass = getZoneClass(parseFloat(closestRound.actual));
+                
+                timeSearchResultEl.innerHTML = 
+                    `Found: **Round #${closestRound.roundNum}** at **${closestRound.time}** (Multiplier: <span class="zone-status ${zoneClass}">**${closestRound.actual}x**</span>).`;
+                timeSearchResultEl.style.color = '#FFC107'; 
+            } else {
+                timeSearchResultEl.textContent = "No logged rounds found in history.";
+                timeSearchResultEl.style.color = '#E57373'; 
+            }
+        });
+        // --- END TIME SEARCH LOGIC ---
+
+
+        // --- VOICE INPUT LOGIC (UNCHANGED) ---
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
         if (SpeechRecognition) {
@@ -534,7 +596,6 @@
                 micBtn.textContent = '🔴 SPEAK';
                 systemMessageEl.textContent = "Listening...";
                 recognition.start();
-                // We trust 'readonly' to block keyboard, and JS to insert value
             });
 
             recognition.onresult = (event) => {
@@ -546,7 +607,7 @@
                 if (numberMatch) {
                     let multiplier = parseFloat(numberMatch[0]).toFixed(2);
                     
-                    updateInputValue(multiplier); // Set value 
+                    updateInputValue(multiplier); 
                     
                     const isAutoLogOn = autoLogToggle.checked;
 
