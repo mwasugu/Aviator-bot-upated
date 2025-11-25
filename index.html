@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aviator Learning Log & Data Control with Accurate Prediction</title>
+    <title>Aviator Learning Log & Data Control with Focused Risk Assessment</title>
     <style>
         /* CSS STYLES (UNCHANGED) */
         body {
@@ -114,7 +114,7 @@
             text-align: center;
         }
 
-        /* RISK ASSESSMENT SECTION */
+        /* RISK ASSESSMENT SECTION - Hii inajumuisha Jackpot Alert sasa */
         #riskAssessment {
             background-color: #333;
             color: #fff;
@@ -226,18 +226,6 @@
           transform: translateX(20px);
         }
         
-        /* New Prediction Display Style */
-        #predictionDisplay {
-            margin-top: 15px;
-            padding: 10px;
-            border-radius: 8px;
-            background-color: #2c2c2c;
-            color: #FFC107;
-            font-size: 15px;
-            text-align: center;
-            border: 1px solid #FFC107;
-            white-space: pre-wrap;
-        }
     </style>
 </head>
 <body>
@@ -268,7 +256,7 @@
 
         <div id="results" class="result-box">
             <div id="riskAssessment">Analyzing Risk...</div>
-            <div id="predictionDisplay">Log more rounds for Cycle Prediction.</div>
+            
             <div class="message" id="systemMessage">Enter the first round result.</div>
         </div>
         
@@ -320,7 +308,7 @@
             const learningStatusTopEl = document.getElementById('learningStatusTop');
             const historyListEl = document.getElementById('historyList');
             const riskAssessmentEl = document.getElementById('riskAssessment');
-            const predictionDisplayEl = document.getElementById('predictionDisplay'); 
+            // predictionDisplayEl IMEONDOLEWA KAMA ULIVYOOMBA
 
             const MIC_BUTTON_DEFAULT_COLOR = '#2196F3'; 
             const MIC_BUTTON_RECORDING_COLOR = '#FF0000'; 
@@ -357,7 +345,7 @@
                 if (cycleTimeDisplayEl) cycleTimeDisplayEl.textContent = `Cycle: ${getCycleTimeDisplay(cycleSeconds)}`;
 
                 assessRiskByTime(cycleSeconds); 
-                predictUpcomingRounds(cycleSeconds); 
+                // predictUpcomingRounds IMEONDOLEWA
             }
 
             function updateLearningStatus() {
@@ -473,7 +461,7 @@
                 }
             }
             
-            // --- UPDATED RISK ASSESSMENT (1. DATA WEIGHTING) ---
+            // --- UPDATED RISK ASSESSMENT (JACKPOT ALERT PEKEE & DATA WEIGHTING) ---
             
             function assessRiskByTime(currentCycleSecond) {
                 if (!riskAssessmentEl) return;
@@ -503,7 +491,7 @@
                     }
                 }
                 
-                let message = '';
+                let message = 'Analyzing Risk...';
                 
                 if (totalWeightedCount < 3) { 
                     message = `Caution: Insufficient weighted data (${totalWeightedCount.toFixed(1)}) for risk analysis.`;
@@ -512,18 +500,22 @@
                     const redPercent = (redCount / totalWeightedCount) * 100;
                     const orangePercent = (orangeCount / totalWeightedCount) * 100;
                     
+                    // Priority 1: Jackpot Alert (Peaked: > 5% chance in this time window)
                     if (orangePercent > 5) { 
                         message = `💰 **JACKPOT INITIATION!** ${orangePercent.toFixed(0)}% hit 10.00x+ in this time-slice. BE READY!`;
                         riskAssessmentEl.style.backgroundColor = '#4CAF50'; 
                     } 
+                    // Priority 2: High Risk Alert
                     else if (redPercent > 60) {
                         message = `🚨 **HIGH RISK!** ${redPercent.toFixed(0)}% crashed below 2.00x in this window.`;
                         riskAssessmentEl.style.backgroundColor = '#E57373'; 
                     } 
+                    // Priority 3: Moderate Risk Alert
                     else if (redPercent > 40) { 
                         message = `⚠️ **MODERATE RISK!** Red Zone Frequency: ${redPercent.toFixed(0)}% (Weighted Rounds: ${totalWeightedCount.toFixed(1)}).`;
                         riskAssessmentEl.style.backgroundColor = '#FF9800'; 
                     } 
+                    // Default: Normal Conditions
                     else {
                         message = `🟢 **NORMAL CONDITIONS.** (Weighted Rounds Found: ${totalWeightedCount.toFixed(1)})`;
                         riskAssessmentEl.style.backgroundColor = '#333'; 
@@ -532,89 +524,7 @@
                 riskAssessmentEl.textContent = message;
             }
 
-            // --- UPDATED PREDICTION LOGIC (2. SEQUENCE PATTERN) ---
-
-            function predictUpcomingRounds(currentCycleSecond) {
-                if (!predictionDisplayEl) return;
-                 if (history.length < 10) {
-                    predictionDisplayEl.textContent = "Log at least 10 rounds for Pattern Prediction.";
-                    return;
-                }
-
-                const jackpotRounds = history.filter(item => parseFloat(item.actual) >= 10.00);
-
-                let predictionMessage = 'Analyzing... No consistent Jackpot patterns found yet.';
-
-                if (jackpotRounds.length >= 3) {
-                    const cycleTimes = jackpotRounds.slice(0, 3).map(item => parseInt(item.cycleSecond));
-                    
-                    const timeDiffs = [];
-                    let diff1 = cycleTimes[0] - cycleTimes[1];
-                    if (diff1 < 0) diff1 += CYCLE_SECONDS;
-                    timeDiffs.push(diff1);
-
-                    let diff2 = cycleTimes[1] - cycleTimes[2];
-                    if (diff2 < 0) diff2 += CYCLE_SECONDS;
-                    timeDiffs.push(diff2);
-
-                    const avgDifference = Math.round((timeDiffs[0] + timeDiffs[1]) / 2); 
-                    
-                    let nextPredictedTime1 = (cycleTimes[0] + avgDifference) % CYCLE_SECONDS;
-                    let nextPredictedTime2 = (nextPredictedTime1 + avgDifference) % CYCLE_SECONDS;
-
-                    const upcomingPredictions = [];
-
-                    let timeUntil1 = nextPredictedTime1 - currentCycleSecond;
-                    if (timeUntil1 < 0) timeUntil1 += CYCLE_SECONDS;
-                    
-                    if (timeUntil1 > 5) {
-                        upcomingPredictions.push({
-                            cycleDisplay: getCycleTimeDisplay(nextPredictedTime1),
-                            timeUntil: getCycleTimeDisplay(timeUntil1)
-                        });
-                    }
-                    
-                    let timeUntil2 = nextPredictedTime2 - currentCycleSecond;
-                    if (timeUntil2 < 0) timeUntil2 += CYCLE_SECONDS;
-
-                    if (timeUntil2 > 5 && upcomingPredictions.length < 2) {
-                        upcomingPredictions.push({
-                            cycleDisplay: getCycleTimeDisplay(nextPredictedTime2),
-                            timeUntil: getCycleTimeDisplay(timeUntil2)
-                        });
-                    }
-                    
-                    if (upcomingPredictions.length > 0) {
-                        predictionDisplayEl.style.color = '#8BC34A'; 
-                        predictionDisplayEl.style.border = '1px solid #8BC34A';
-                        
-                        predictionMessage = `🎯 **JACKPOT TIME PREDICTION (2 UPCOMING)**:
-(Avg Gap: ${getCycleTimeDisplay(avgDifference)})`;
-
-                        upcomingPredictions.forEach((p, index) => {
-                             predictionMessage += `\n${index + 1}. Cycle **${p.cycleDisplay}** (In: ${p.timeUntil})`;
-                        });
-                        
-                        if (upcomingPredictions.length === 1) {
-                            predictionMessage += `\n(Raundi ya 2 Iko karibu au Imepita)`;
-                        }
-
-                    } else {
-                         predictionDisplayEl.style.color = '#FFC107'; 
-                         predictionDisplayEl.style.border = '1px solid #FFC107';
-                         predictionMessage = `Analyzing... Jackpot patterns observed, but no clear upcoming time window found yet.`;
-                    }
-
-                } else if (jackpotRounds.length > 0) {
-                     predictionDisplayEl.style.color = '#FFC107'; 
-                     predictionDisplayEl.style.border = '1px solid #FFC107';
-                     predictionMessage = `Log more Jackpots (10x+) to calculate average timing. (Last Jackpot: Cycle ${getCycleTimeDisplay(jackpotRounds[0].cycleSecond)})`;
-                }
-
-                predictionDisplayEl.textContent = predictionMessage;
-            }
-
-            // --- VOICE INPUT LOGIC (FINAL CHECKED) ---
+            // --- VOICE INPUT LOGIC (FUNCTIONAL CHECKED) ---
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
             if (SpeechRecognition && micBtn) { 
@@ -683,7 +593,7 @@
             updateLearningStatus();
             renderHistory();
             updateClock(); 
-        }); // --- 🗝️ END OF DOMContentLoaded WRAPPER (THE FIX) ---
+        }); // --- 🗝️ END OF DOMContentLoaded WRAPPER ---
     </script>
 </body>
 </html>
