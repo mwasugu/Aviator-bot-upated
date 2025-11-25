@@ -269,7 +269,7 @@
 
         <div id="results" class="result-box">
             <div id="riskAssessment">Analyzing Risk...</div>
-            <div id="predictionDisplay">Loading Predictions...</div>
+            <div id="predictionDisplay">Log more rounds for Cycle Prediction.</div>
             <div class="message" id="systemMessage">Enter the first round result.</div>
         </div>
         
@@ -301,11 +301,12 @@
         let attempts = parseInt(localStorage.getItem('aviator_attempts') || 0); 
         let history = JSON.parse(localStorage.getItem('aviator_history') || '[]');
         
+        // --- DOM ELEMENTS - Ensure correct fetching ---
         const roundInput = document.getElementById('roundInput'); 
         const logButton = document.getElementById('logButton'); 
         const undoButton = document.getElementById('undoButton');
         const resetButton = document.getElementById('resetButton');
-        const micBtn = document.getElementById('micBtn'); 
+        const micBtn = document.getElementById('micBtn'); // Check this ID
         const autoLogToggle = document.getElementById('autoLogToggle'); 
         
         const realTimeDisplayEl = document.getElementById('realTimeDisplay'); 
@@ -315,7 +316,7 @@
         const learningStatusTopEl = document.getElementById('learningStatusTop');
         const historyListEl = document.getElementById('historyList');
         const riskAssessmentEl = document.getElementById('riskAssessment');
-        const predictionDisplayEl = document.getElementById('predictionDisplay'); // NEW ELEMENT
+        const predictionDisplayEl = document.getElementById('predictionDisplay'); 
 
         const MIC_BUTTON_DEFAULT_COLOR = '#2196F3'; 
         const MIC_BUTTON_RECORDING_COLOR = '#FF0000'; 
@@ -352,7 +353,7 @@
             cycleTimeDisplayEl.textContent = `Cycle: ${getCycleTimeDisplay(cycleSeconds)}`;
 
             assessRiskByTime(cycleSeconds); 
-            predictUpcomingRounds(cycleSeconds); // NEW PREDICTION CALL
+            predictUpcomingRounds(cycleSeconds); 
         }
 
         function updateLearningStatus() {
@@ -386,7 +387,7 @@
             renderHistory();
         }
 
-        // --- RISK ASSESSMENT (UNCHANGED LOGIC, HIGH JACKPOT SENSITIVITY) ---
+        // --- RISK ASSESSMENT (HIGH JACKPOT SENSITIVITY) ---
         function assessRiskByTime(currentCycleSecond) {
             const windowSize = TIME_WINDOW_FOR_LEARNING; 
             let redCount = 0; 
@@ -418,22 +419,18 @@
                 const redPercent = (redCount / totalCount) * 100;
                 const orangePercent = (orangeCount / totalCount) * 100;
                 
-                // Priority 1: Jackpot Alert (Sensitive: > 5%)
                 if (orangePercent > 5) { 
                     message = `💰 **JACKPOT INITIATION!** ${orangePercent.toFixed(0)}% hit 10.00x+ in this time-slice. BE READY!`;
-                    riskAssessmentEl.style.backgroundColor = '#4CAF50'; // Green for money
+                    riskAssessmentEl.style.backgroundColor = '#4CAF50'; 
                 } 
-                // Priority 2: High Risk Alert
                 else if (redPercent > 60) {
                     message = `🚨 **HIGH RISK!** ${redPercent.toFixed(0)}% crashed below 2.00x in this window.`;
-                    riskAssessmentEl.style.backgroundColor = '#E57373'; // Red
+                    riskAssessmentEl.style.backgroundColor = '#E57373'; 
                 } 
-                // Priority 3: Moderate Risk Alert
                 else if (redPercent > 40) { 
                     message = `⚠️ **MODERATE RISK!** Red Zone Frequency: ${redPercent.toFixed(0)}% (Rounds: ${totalCount}).`;
-                    riskAssessmentEl.style.backgroundColor = '#FF9800'; // Orange/Yellow
+                    riskAssessmentEl.style.backgroundColor = '#FF9800'; 
                 } 
-                // Default: Normal Conditions
                 else {
                     message = `🟢 **NORMAL CONDITIONS.** (Rounds Found: ${totalCount})`;
                     riskAssessmentEl.style.backgroundColor = '#333'; 
@@ -442,7 +439,7 @@
             riskAssessmentEl.textContent = message;
         }
 
-        // --- NEW: UPCOMING ROUND PREDICTION LOGIC ---
+        // --- UPCOMING ROUND PREDICTION LOGIC ---
 
         function predictUpcomingRounds(currentCycleSecond) {
             if (history.length < 5) {
@@ -450,17 +447,17 @@
                 return;
             }
 
-            const targetCycles = {}; // { cycleSecond: frequency }
-            const zone = riskAssessmentEl.style.backgroundColor === 'rgb(76, 175, 80)' ? 'Jackpot' : 'RedZone';
+            const targetCycles = {}; 
+            const isJackpotMode = riskAssessmentEl.style.backgroundColor === 'rgb(76, 175, 80)';
+            const zone = isJackpotMode ? 'Jackpot' : 'RedZone';
             
-            // 1. Identify Target Zone Cycles (e.g., all 10x+ or all < 2x rounds)
             history.forEach(item => {
                 const actualMultiplier = parseFloat(item.actual);
                 const itemCycleSecond = parseInt(item.cycleSecond);
 
-                if (zone === 'Jackpot' && actualMultiplier >= 10.00) {
+                if (isJackpotMode && actualMultiplier >= 10.00) {
                      targetCycles[itemCycleSecond] = (targetCycles[itemCycleSecond] || 0) + 1;
-                } else if (zone === 'RedZone' && actualMultiplier < 2.00) {
+                } else if (!isJackpotMode && actualMultiplier < 2.00) {
                      targetCycles[itemCycleSecond] = (targetCycles[itemCycleSecond] || 0) + 1;
                 }
             });
@@ -469,20 +466,15 @@
                 .map(([time, freq]) => ({ time: parseInt(time), freq }))
                 .sort((a, b) => b.freq - a.freq);
             
-            // 2. Predict next 2 Upcoming Rounds based on high frequency 
-            //    and closeness to current cycle, ensuring they are ahead.
-
             const predictions = [];
             for (let i = 0; i < sortedCycles.length; i++) {
                 const cycleTime = sortedCycles[i].time;
                 
-                // Calculate time difference, only interested in future times
                 let timeDifference = cycleTime - currentCycleSecond;
                 if (timeDifference < 0) {
-                    timeDifference += CYCLE_SECONDS; // Wrap around to the next cycle
+                    timeDifference += CYCLE_SECONDS; 
                 }
                 
-                // Only consider predictions that are more than 5 seconds in the future
                 if (timeDifference > 5) { 
                     predictions.push({
                         cycleTime: cycleTime,
@@ -496,22 +488,19 @@
                 if (predictions.length >= 2) break;
             }
 
-            // 3. Display Results
-            let predictionMessage = 'No strong patterns for upcoming rounds.';
+            let predictionMessage = `Analyzing... No immediate ${zone} patterns found ahead.`;
             if (predictions.length > 0) {
                 
-                predictionMessage = `🎯 **${zone.toUpperCase()} PREDICTION (2 UPCOMING)**:\n`;
+                predictionMessage = `🎯 **${zone.toUpperCase()} PREDICTION (2 UPCOMING)**:`;
                 
                 predictions.forEach((p, index) => {
                     predictionMessage += `\n${index + 1}. Cycle **${p.cycleDisplay}** (In: ${p.timeUntil}) - Count: ${p.frequency}`;
                 });
                 
-                // Simple color logic based on predicted zone
-                predictionDisplayEl.style.color = zone === 'Jackpot' ? '#8BC34A' : '#E57373';
+                predictionDisplayEl.style.color = isJackpotMode ? '#8BC34A' : '#E57373';
                 predictionDisplayEl.style.border = `1px solid ${predictionDisplayEl.style.color}`;
 
             } else {
-                 predictionDisplayEl.textContent = `Analyzing... No immediate ${zone} patterns found ahead.`;
                  predictionDisplayEl.style.color = '#FFC107'; 
                  predictionDisplayEl.style.border = '1px solid #FFC107';
             }
@@ -519,14 +508,86 @@
         }
 
 
-        // --- VOICE INPUT LOGIC (UNCHANGED) ---
+        // --- HANDLERS (UNCHANGED) ---
+
+        function updateInputValue(value) {
+             roundInput.removeAttribute('readonly'); 
+             roundInput.value = value;
+             roundInput.setAttribute('readonly', 'readonly'); 
+        }
+
+        function logCurrentRound() {
+             roundInput.removeAttribute('readonly'); 
+             const inputValue = parseFloat(roundInput.value); 
+             roundInput.setAttribute('readonly', 'readonly'); 
+             
+            if (isNaN(inputValue) || inputValue < 1.00) {
+                systemMessageEl.textContent = "Please enter a valid multiplier (>= 1.00).";
+                return;
+            }
+
+            totalRounds++;
+            const actual = inputValue.toFixed(2);
+            
+            const now = new Date();
+            const cycleSeconds = getCurrentCycleSeconds();
+            
+            const historyEntry = {
+                roundNum: totalRounds,
+                time: formatTime(now),
+                cycleSecond: cycleSeconds, 
+                actual: actual,
+                zone: getZoneClass(inputValue),
+            };
+            
+            history.unshift(historyEntry);
+            if (history.length > 50) { 
+                history.pop(); 
+            }
+
+            saveState();
+            systemMessageEl.textContent = `Round #${totalRounds} logged: ${actual}x.`;
+            updateInputValue(''); 
+        }
+
+        function undoButtonHandler() {
+            if (history.length > 0) {
+                const lastRound = history.shift(); 
+                
+                if (totalRounds > 0) {
+                    totalRounds--; 
+                }
+                
+                attempts++;
+                errors++; 
+                
+                saveState();
+                systemMessageEl.textContent = `Last Round (${lastRound.actual}x) **UNDONE**. Total: ${totalRounds}`;
+                updateInputValue(lastRound.actual); 
+            } else {
+                systemMessageEl.textContent = "No rounds to undo.";
+            }
+        }
+
+        function resetButtonHandler() {
+             if (confirm("ARE YOU SURE you want to DELETE ALL logged history and start from Round #1? This cannot be undone.")) {
+                localStorage.clear(); 
+                totalRounds = 0;
+                errors = 0; 
+                attempts = 0;
+                history = [];
+                saveState();
+                systemMessageEl.textContent = "Data Cleared. Start logging from Round #1.";
+            }
+        }
+        
+        // --- VOICE INPUT LOGIC (RE-CHECKED) ---
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
         if (SpeechRecognition) {
             const recognition = new SpeechRecognition();
             recognition.continuous = false;
             recognition.lang = 'en-US'; 
-            micBtn.style.backgroundColor = MIC_BUTTON_DEFAULT_COLOR;
 
             micBtn.addEventListener('click', () => {
                 micBtn.style.backgroundColor = MIC_BUTTON_RECORDING_COLOR;
@@ -543,18 +604,14 @@
 
                 if (numberMatch) {
                     let multiplier = parseFloat(numberMatch[0]).toFixed(2);
-                    
                     updateInputValue(multiplier); 
                     
-                    const isAutoLogOn = autoLogToggle.checked;
-
-                    if (isAutoLogOn) {
+                    if (autoLogToggle.checked) {
                         systemMessageEl.textContent = `Voice Received: ${multiplier}x. Auto-Logging...`;
                         logCurrentRound(); 
                     } else {
                         systemMessageEl.textContent = `Voice Received: ${multiplier}x. Press LOG ROUND RESULT to save.`;
                     }
-                    
                 } else {
                      systemMessageEl.textContent = "Could not understand. Try again or manually enter.";
                 }
@@ -564,16 +621,28 @@
                 micBtn.textContent = '🎤';
                 recognition.stop();
             };
-            recognition.onerror = () => {
+            recognition.onerror = (event) => {
                 micBtn.style.backgroundColor = MIC_BUTTON_DEFAULT_COLOR; 
                 micBtn.textContent = '🎤';
-                systemMessageEl.textContent = "Voice error or timeout. Try again.";
+                console.error('Speech Recognition Error:', event.error);
+                systemMessageEl.textContent = "Voice error or timeout. Try again. (Check browser console for details).";
             };
 
         } else {
             micBtn.style.display = 'none';
+            systemMessageEl.textContent = "Speech Recognition not supported by your browser.";
         }
-
+        
+        // --- ATTACH EVENT LISTENERS (CRITICAL STEP FOR BUTTONS) ---
+        logButton.addEventListener('click', logCurrentRound);
+        undoButton.addEventListener('click', undoButtonHandler);
+        resetButton.addEventListener('click', resetButtonHandler);
+        
+        autoLogToggle.addEventListener('change', () => {
+            localStorage.setItem('aviator_autoLog', autoLogToggle.checked);
+            systemMessageEl.textContent = `Voice Auto-Log is now ${autoLogToggle.checked ? 'ON' : 'OFF'}.`;
+        });
+        
         // Initialization
         setInterval(updateClock, 1000); 
         updateLearningStatus();
