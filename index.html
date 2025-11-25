@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aviator Learning Log & Separate Jackpot Alert</title>
+    <style>
+        /* CSS STYLES (MOSTLY UNCHANGED) */
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #0d0d0d;
+            color: #e0e0e0;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            background-color: #1a1a1a;
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.7);
+            width: 100%;
+            max-width: 450px;
+        }
+        h1 {
+            color: #4CAF50;
+            text-align: center;
+            margin-bottom: 25px;
+            font-size: 28px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #bdbdbd;
+        }
+        input {
+            width: calc(100% - 22px);
+            padding: 12px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            background-color: #2c2c2c;
+            color: #fff;
+            font-size: 18px;
+            caret-color: transparent; 
+        }
+        button {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.1s;
+            margin-bottom: 10px;
+        }
+        button:active {
+            transform: scale(0.98);
+        }
+
+        /* BUTTON STYLES */
+        #logButton {
+            background-color: #4CAF50;
+            color: #1a1a1a;
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+
+        #undoButton {
+            background-color: #FF9800;
+            color: #1a1a1a;
+        }
+
+        #resetButton {
+            background-color: #E57373;
+            color: white;
+        }
+
+        #micBtn {
+            width: auto; 
+            padding: 12px 15px; 
+            background-color: #2196F3;
+            color: white;
+            margin-bottom: 0;
+            margin-left: 10px; 
+        }
+        
+        #clockDisplay {
+            text-align: center;
+            font-size: 36px;
+            font-weight: bold;
+            color: #E57373; 
+            margin-bottom: 20px;
+            padding: 10px 0;
+            border-bottom: 2px solid #333;
+        }
+        
+        .result-box {
+            margin-top: 10px;
+            padding: 15px;
+            border-radius: 10px;
+            background-color: #2c2c2c;
+            border-left: 5px solid #4CAF50;
+        }
+        .message {
+            font-size: 18px;
+            font-weight: bold;
+            color: #FFC107;
+            margin: 10px 0;
+            text-align: center;
+        }
+
+        /* RISK ASSESSMENT SECTION */
+        #riskAssessment {
+            background-color: #333;
+            color: #fff;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 5px;
+            margin-bottom: 15px;
+            font-weight: bold;
+            text-align: center;
+            font-size: 16px;
+        }
+        
+        /* NEW: SEPARATE JACKPOT ALERT STYLE */
+        #jackpotAlertDisplay {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 8px;
+            background-color: #2c2c2c;
+            color: #bdbdbd; /* Default color */
+            font-size: 15px;
+            text-align: center;
+            border: 1px solid #333;
+            white-space: pre-wrap;
+        }
+        
+        /* Learning Status/Error Display */
+        #learningStatusTop {
+            font-size: 14px;
+            color: #bdbdbd;
+            text-align: center;
+            margin: 15px 0 10px 0;
+            padding: 8px 0;
+            border-top: 1px dotted #444;
+            border-bottom: 1px dotted #444;
+        }
+
+        #historyLog {
+            margin-top: 25px;
+            padding: 15px;
+            border-radius: 10px;
+            background-color: #1f1f1f;
+            max-height: 250px;
+            overflow-y: auto;
+            border: 1px solid #333;
+        }
+        #historyLog h3 {
+            color: #4CAF50;
+            margin-top: 0;
+            border-bottom: 1px dotted #444;
+            padding-bottom: 5px;
+            font-size: 18px;
+        }
+        .history-item {
+            font-size: 14px;
+            padding: 4px 0;
+            border-bottom: 1px dotted #333;
+            white-space: nowrap; 
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .history-item strong {
+            font-weight: bold;
+            color: #FFC107;
+        }
+        /* Zone Colors */
+        .zone-status.red { color: #E57373; }
+        .zone-status.green { color: #8BC34A; }
+        .zone-status.orange { color: #FF9800; }
+        .zone-status.na { color: #9e9e9e; }
+        
+        .cycle-time-display {
+            font-size: 18px;
+            color: #4CAF50;
+            display: block;
+            margin-top: 5px;
+        }
+        /* TOGGLE SWITCH STYLES (UNCHANGED) */
+        .toggle-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #2c2c2c;
+            padding: 8px 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+        .switch {
+          position: relative;
+          display: inline-block;
+          width: 45px;
+          height: 25px;
+        }
+        .switch input {opacity: 0; width: 0; height: 0;}
+        .slider {
+          position: absolute;
+          cursor: pointer;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: #ccc;
+          transition: .4s;
+          border-radius: 34px;
+        }
+        .slider:before {
+          position: absolute;
+          content: "";
+          height: 17px;
+          width: 17px;
+          left: 4px;
+          bottom: 4px;
+          background-color: white;
+          transition: .4s;
+          border-radius: 50%;
+        }
+        input:checked + .slider {
+          background-color: #4CAF50;
+        }
+        input:checked + .slider:before {
+          transform: translateX(20px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 Aviator Learning Log</h1>
+
+        <div id="clockDisplay">
+            <span id="realTimeDisplay">--:--:--</span>
+            <span class="cycle-time-display" id="cycleTimeDisplay">Cycle: 00:00</span>
+        </div>
+        
+        <label for="roundInput" id="roundLabel">Enter Round Multiplier (Actual Result):</label>
+        
+        <div style="display: flex; align-items: center;">
+            <input type="number" id="roundInput" step="0.01" placeholder="Example: 1.50 or 8.23" style="margin-bottom: 0;" readonly inputmode="decimal"> 
+            <button id="micBtn" style="width: auto; padding: 12px 15px; margin-bottom: 0;">🎤</button>
+        </div>
+
+        <div class="toggle-container">
+            <span>Voice Auto-Log (ON/OFF):</span>
+            <label class="switch">
+              <input type="checkbox" id="autoLogToggle" checked>
+              <span class="slider"></span>
+            </label>
+        </div>
+        
+        <button id="logButton">LOG ROUND RESULT</button>
+
+        <div id="results" class="result-box">
+            <div id="riskAssessment">Analyzing Risk...</div>
+            
+            <div id="jackpotAlertDisplay">Jackpot (10.00x+) Watch: Analyzing...</div>
+            
+            <div class="message" id="systemMessage">Enter the first round result.</div>
+        </div>
+        
+        <div id="learningStatusTop"></div>
+
+        <div id="controlButtons" style="display: flex; gap: 10px; margin-top: 10px;">
+            <button id="undoButton">UNDO Last Round</button>
+            <button id="resetButton">RESET All Data</button>
+        </div>
+        
+        <div id="historyLog">
+            <h3>Round History: (Time | Round# | Multiplier | Cycle)</h3>
+            <div id="historyList"></div>
+        </div>
+        
+        <p class="disclaimer" style="font-size: 12px; color: #9e9e9e; text-align: center; margin-top: 20px;">
+            This tool records your history for analysis. Risk is based only on your logged data.
+        </p>
+
+    </div>
+
+    <script>
+        // --- 🔑 CRITICAL FIX: Ensure all DOM elements are loaded before running JS ---
+        document.addEventListener('DOMContentLoaded', () => {
+
+            // --- GLOBAL VARIABLES & CONSTANTS ---
+            const CYCLE_SECONDS = 720; // 12 minutes
+            const TIME_WINDOW_FOR_LEARNING = 60; // 60 seconds (for risk display) 
+            const RECENT_ROUNDS_COUNT = 10; // Number of rounds to give extra weight
+            const RECENT_WEIGHT = 2.0; // Weight multiplier for recent rounds
+            
+            let totalRounds = parseInt(localStorage.getItem('aviator_totalRounds') || 0);
+            let errors = parseInt(localStorage.getItem('aviator_errors') || 0); 
+            let attempts = parseInt(localStorage.getItem('aviator_attempts') || 0); 
+            let history = JSON.parse(localStorage.getItem('aviator_history') || '[]');
+            
+            // --- DOM ELEMENTS - CHECKED AND VERIFIED IDs ---
+            const roundInput = document.getElementById('roundInput'); 
+            const logButton = document.getElementById('logButton'); 
+            const undoButton = document.getElementById('undoButton');
+            const resetButton = document.getElementById('resetButton');
+            const micBtn = document.getElementById('micBtn'); 
+            const autoLogToggle = document.getElementById('autoLogToggle'); 
+            
+            const realTimeDisplayEl = document.getElementById('realTimeDisplay'); 
+            const cycleTimeDisplayEl = document.getElementById('cycleTimeDisplay'); 
+
+            const systemMessageEl = document.getElementById('systemMessage');
+            const learningStatusTopEl = document.getElementById('learningStatusTop');
+            const historyListEl = document.getElementById('historyList');
+            const riskAssessmentEl = document.getElementById('riskAssessment');
+            const jackpotAlertDisplayEl = document.getElementById('jackpotAlertDisplay'); // NEW ELEMENT
+            
+            const MIC_BUTTON_DEFAULT_COLOR = '#2196F3'; 
+            const MIC_BUTTON_RECORDING_COLOR = '#FF0000'; 
+
+            // --- CORE FUNCTIONS ---
+
+            function getZoneClass(multiplier) {
+                if (multiplier >= 10.00) return 'orange';
+                if (multiplier >= 2.00) return 'green';
+                return 'red';
+            }
+            
+            function formatTime(date) {
+                return date.toTimeString().split(' ')[0];
+            }
+
+            function getCurrentCycleSeconds() {
+                const now = new Date();
+                const totalSecondsOfDay = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+                return totalSecondsOfDay % CYCLE_SECONDS;
+            }
+
+            function getCycleTimeDisplay(cycleSeconds) {
+                const minutes = Math.floor(cycleSeconds / 60);
+                const seconds = cycleSeconds % 60;
+                return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+            
+            function updateClock() {
+                const now = new Date();
+                const cycleSeconds = getCurrentCycleSeconds();
+                
+                if (realTimeDisplayEl) realTimeDisplayEl.textContent = formatTime(now); 
+                if (cycleTimeDisplayEl) cycleTimeDisplayEl.textContent = `Cycle: ${getCycleTimeDisplay(cycleSeconds)}`;
+
+                assessRiskByTime(cycleSeconds); 
+                assessJackpotRisk(cycleSeconds); // NEW SEPARATE CALL
+            }
+
+            function updateLearningStatus() {
+                if (learningStatusTopEl) {
+                    learningStatusTopEl.innerHTML = 
+                        `Total Rounds Logged: **${totalRounds}** | Logged Errors: **${errors}**`;
+                }
+                
+                if (undoButton) {
+                    undoButton.disabled = history.length === 0;
+                }
+                
+                const savedAutoLog = localStorage.getItem('aviator_autoLog');
+                if (autoLogToggle) {
+                   autoLogToggle.checked = (savedAutoLog === 'true' || savedAutoLog === null);
+                }
+            }
+
+            function renderHistory() {
+                if (!historyListEl) return;
+                historyListEl.innerHTML = history.map((item) => {
+                    const zoneClass = getZoneClass(parseFloat(item.actual));
+                    const itemCycleTime = getCycleTimeDisplay(item.cycleSecond);
+
+                    return `<div class="history-item">
+                        [${item.time}] **R#${item.roundNum}**: 
+                        <span class="zone-status ${zoneClass}">${item.actual}x</span> | 
+                        Cycle: ${itemCycleTime}
+                    </div>`;
+                }).join('');
+            }
+
+            function saveState() {
+                localStorage.setItem('aviator_totalRounds', totalRounds);
+                localStorage.setItem('aviator_errors', errors); 
+                localStorage.setItem('aviator_attempts', attempts); 
+                localStorage.setItem('aviator_history', JSON.stringify(history));
+                updateLearningStatus();
+                renderHistory();
+            }
+
+            // --- HANDLERS (UNCHANGED) ---
+            function updateInputValue(value) {
+                 if (!roundInput) return;
+                 roundInput.removeAttribute('readonly'); 
+                 roundInput.value = value;
+                 roundInput.setAttribute('readonly', 'readonly'); 
+            }
+
+            function logCurrentRound() {
+                if (!roundInput) return;
+                 roundInput.removeAttribute('readonly'); 
+                 const inputValue = parseFloat(roundInput.value); 
+                 roundInput.setAttribute('readonly', 'readonly'); 
+                 
+                if (isNaN(inputValue) || inputValue < 1.00) {
+                    if (systemMessageEl) systemMessageEl.textContent = "Please enter a valid multiplier (>= 1.00).";
+                    return;
+                }
+
+                totalRounds++;
+                const actual = inputValue.toFixed(2);
+                
+                const now = new Date();
+                const cycleSeconds = getCurrentCycleSeconds();
+                
+                const historyEntry = {
+                    roundNum: totalRounds,
+                    time: formatTime(now),
+                    cycleSecond: cycleSeconds, 
+                    actual: actual,
+                    zone: getZoneClass(inputValue),
+                };
+                
+                history.unshift(historyEntry);
+                if (history.length > 50) { 
+                    history.pop(); 
+                }
+
+                saveState();
+                if (systemMessageEl) systemMessageEl.textContent = `Round #${totalRounds} logged: ${actual}x.`;
+                updateInputValue(''); 
+            }
+
+            function undoButtonHandler() {
+                if (history.length > 0) {
+                    const lastRound = history.shift(); 
+                    
+                    if (totalRounds > 0) {
+                        totalRounds--; 
+                    }
+                    
+                    attempts++;
+                    errors++; 
+                    
+                    saveState();
+                    if (systemMessageEl) systemMessageEl.textContent = `Last Round (${lastRound.actual}x) **UNDONE**. Total: ${totalRounds}`;
+                    updateInputValue(lastRound.actual); 
+                } else {
+                    if (systemMessageEl) systemMessageEl.textContent = "No rounds to undo.";
+                }
+            }
+
+            function resetButtonHandler() {
+                 if (confirm("ARE YOU SURE you want to DELETE ALL logged history and start from Round #1? This cannot be undone.")) {
+                    localStorage.clear(); 
+                    totalRounds = 0;
+                    errors = 0; 
+                    attempts = 0;
+                    history = [];
+                    saveState();
+                    if (systemMessageEl) systemMessageEl.textContent = "Data Cleared. Start logging from Round #1.";
+                }
+            }
+            
+            // --- NEW: SPECIAL JACKPOT ASSESSMENT ---
+            function assessJackpotRisk(currentCycleSecond) {
+                if (!jackpotAlertDisplayEl) return;
+                
+                let orangeCount = 0; 
+                let totalWeightedCount = 0; 
+
+                for (let i = 0; i < history.length; i++) {
+                    const item = history[i];
+                    const actualMultiplier = parseFloat(item.actual);
+                    const itemCycleSecond = parseInt(item.cycleSecond);
+                    
+                    const weight = (i < RECENT_ROUNDS_COUNT) ? RECENT_WEIGHT : 1.0; 
+
+                    let diff = Math.abs(currentCycleSecond - itemCycleSecond);
+                    if (diff > CYCLE_SECONDS / 2) {
+                        diff = CYCLE_SECONDS - diff;
+                    }
+
+                    if (diff <= TIME_WINDOW_FOR_LEARNING / 2) { 
+                        totalWeightedCount += weight; 
+                        if (actualMultiplier >= 10.00) orangeCount += weight; 
+                    }
+                }
+                
+                if (totalWeightedCount < 3) {
+                    jackpotAlertDisplayEl.textContent = `Jackpot (10.00x+) Watch: Insufficient weighted data (${totalWeightedCount.toFixed(1)}).`;
+                    jackpotAlertDisplayEl.style.backgroundColor = '#2c2c2c';
+                    jackpotAlertDisplayEl.style.color = '#bdbdbd';
+                    jackpotAlertDisplayEl.style.border = '1px solid #333';
+                } else {
+                    const orangePercent = (orangeCount / totalWeightedCount) * 100;
+                    
+                    if (orangePercent > 5) { 
+                        jackpotAlertDisplayEl.textContent = `💰 **MEGA JACKPOT ALERT!** ${orangePercent.toFixed(0)}% hit 10.00x+ in this ${TIME_WINDOW_FOR_LEARNING}s window. ACT NOW!`;
+                        jackpotAlertDisplayEl.style.backgroundColor = '#388E3C'; // Dark Green
+                        jackpotAlertDisplayEl.style.color = 'white';
+                        jackpotAlertDisplayEl.style.border = '1px solid #4CAF50';
+                    } 
+                    else {
+                        jackpotAlertDisplayEl.textContent = `Jackpot (10.00x+) Watch: Orange Zone Frequency: ${orangePercent.toFixed(1)}% (Weighted Rounds: ${totalWeightedCount.toFixed(1)}).`;
+                        jackpotAlertDisplayEl.style.backgroundColor = '#2c2c2c';
+                        jackpotAlertDisplayEl.style.color = '#bdbdbd';
+                        jackpotAlertDisplayEl.style.border = '1px solid #333';
+                    }
+                }
+            }
+
+
+            // --- RISK ASSESSMENT (Sasa inashughulikia RED/MODERATE Risk tu) ---
+            
+            function assessRiskByTime(currentCycleSecond) {
+                if (!riskAssessmentEl) return;
+                
+                let redCount = 0; 
+                let totalWeightedCount = 0; 
+
+                for (let i = 0; i < history.length; i++) {
+                    const item = history[i];
+                    const actualMultiplier = parseFloat(item.actual);
+                    const itemCycleSecond = parseInt(item.cycleSecond);
+                    
+                    const weight = (i < RECENT_ROUNDS_COUNT) ? RECENT_WEIGHT : 1.0; 
+
+                    let diff = Math.abs(currentCycleSecond - itemCycleSecond);
+                    if (diff > CYCLE_SECONDS / 2) {
+                        diff = CYCLE_SECONDS - diff;
+                    }
+
+                    if (diff <= TIME_WINDOW_FOR_LEARNING / 2) { 
+                        totalWeightedCount += weight; 
+                        if (actualMultiplier < 2.00) redCount += weight; 
+                    }
+                }
+                
+                let message = 'Analyzing Risk...';
+                
+                if (totalWeightedCount < 3) { 
+                    message = `Caution: Insufficient weighted data (${totalWeightedCount.toFixed(1)}) for Red Zone risk analysis.`;
+                    riskAssessmentEl.style.backgroundColor = '#555';
+                } else {
+                    const redPercent = (redCount / totalWeightedCount) * 100;
+                    
+                    // Priority 1: High Risk Alert
+                    if (redPercent > 60) {
+                        message = `🚨 **HIGH RISK!** ${redPercent.toFixed(0)}% crashed below 2.00x in this window. AVOID.`;
+                        riskAssessmentEl.style.backgroundColor = '#E57373'; 
+                    } 
+                    // Priority 2: Moderate Risk Alert
+                    else if (redPercent > 40) { 
+                        message = `⚠️ **MODERATE RISK!** Red Zone Frequency: ${redPercent.toFixed(0)}% (Weighted Rounds: ${totalWeightedCount.toFixed(1)}).`;
+                        riskAssessmentEl.style.backgroundColor = '#FF9800'; 
+                    } 
+                    // Default: Normal Conditions
+                    else {
+                        message = `🟢 **NORMAL CONDITIONS.** (Weighted Rounds Found: ${totalWeightedCount.toFixed(1)})`;
+                        riskAssessmentEl.style.backgroundColor = '#333'; 
+                    }
+                }
+                riskAssessmentEl.textContent = message;
+            }
+
+            // --- VOICE INPUT LOGIC (FUNCTIONAL CHECKED) ---
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+            if (SpeechRecognition && micBtn) { 
+                const recognition = new SpeechRecognition();
+                recognition.continuous = false;
+                recognition.lang = 'en-US'; 
+
+                micBtn.addEventListener('click', () => {
+                    micBtn.style.backgroundColor = MIC_BUTTON_RECORDING_COLOR;
+                    micBtn.textContent = '🔴 SPEAK';
+                    if (systemMessageEl) systemMessageEl.textContent = "Listening...";
+                    recognition.start();
+                });
+
+                recognition.onresult = (event) => {
+                    const result = event.results[0][0].transcript;
+                    const numberMatch = result.match(/(\d+\.?\d*)/); 
+                    micBtn.style.backgroundColor = MIC_BUTTON_DEFAULT_COLOR;
+                    micBtn.textContent = '🎤';
+
+                    if (numberMatch) {
+                        let multiplier = parseFloat(numberMatch[0]).toFixed(2);
+                        updateInputValue(multiplier); 
+                        
+                        if (autoLogToggle && autoLogToggle.checked) {
+                            if (systemMessageEl) systemMessageEl.textContent = `Voice Received: ${multiplier}x. Auto-Logging...`;
+                            logCurrentRound(); 
+                        } else {
+                            if (systemMessageEl) systemMessageEl.textContent = `Voice Received: ${multiplier}x. Press LOG ROUND RESULT to save.`;
+                        }
+                    } else {
+                        if (systemMessageEl) systemMessageEl.textContent = "Could not understand. Try again or manually enter.";
+                    }
+                };
+                recognition.onspeechend = () => {
+                    micBtn.style.backgroundColor = MIC_BUTTON_DEFAULT_COLOR; 
+                    micBtn.textContent = '🎤';
+                    recognition.stop();
+                };
+                recognition.onerror = (event) => {
+                    micBtn.style.backgroundColor = MIC_BUTTON_DEFAULT_COLOR; 
+                    micBtn.textContent = '🎤';
+                    console.error('Speech Recognition Error:', event.error);
+                    if (systemMessageEl) systemMessageEl.textContent = "Voice error or timeout. Try again. (Check browser console for details).";
+                };
+
+            } else if (micBtn) {
+                micBtn.style.display = 'none';
+                if (systemMessageEl) systemMessageEl.textContent = "Speech Recognition not supported by your browser.";
+            }
+            
+            // --- ATTACH EVENT LISTENERS (FUNCTIONAL CHECKED) ---
+            if (logButton) logButton.addEventListener('click', logCurrentRound);
+            if (undoButton) undoButton.addEventListener('click', undoButtonHandler);
+            if (resetButton) resetButton.addEventListener('click', resetButtonHandler);
+            
+            if (autoLogToggle) {
+                 autoLogToggle.addEventListener('change', () => {
+                    localStorage.setItem('aviator_autoLog', autoLogToggle.checked);
+                    if (systemMessageEl) systemMessageEl.textContent = `Voice Auto-Log is now ${autoLogToggle.checked ? 'ON' : 'OFF'}.`;
+                });
+            }
+            
+            // Initialization
+            setInterval(updateClock, 1000); 
+            updateLearningStatus();
+            renderHistory();
+            updateClock(); 
+        }); // --- 🗝️ END OF DOMContentLoaded WRAPPER ---
+    </script>
+</body>
+</html>
