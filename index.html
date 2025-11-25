@@ -238,6 +238,7 @@
             font-size: 15px;
             text-align: center;
             border: 1px solid #FFC107;
+            white-space: pre-wrap; /* Ensure line breaks from JS work */
         }
     </style>
 </head>
@@ -276,8 +277,8 @@
         <div id="learningStatusTop"></div>
 
         <div id="controlButtons" style="display: flex; gap: 10px; margin-top: 10px;">
-            <button id="undoButton" style="width: 50%;">UNDO Last Round</button>
-            <button id="resetButton" style="width: 50%;">RESET All Data</button>
+            <button id="undoButton">UNDO Last Round</button>
+            <button id="resetButton">RESET All Data</button>
         </div>
         
         <div id="historyLog">
@@ -306,7 +307,7 @@
         const logButton = document.getElementById('logButton'); 
         const undoButton = document.getElementById('undoButton');
         const resetButton = document.getElementById('resetButton');
-        const micBtn = document.getElementById('micBtn'); // Check this ID
+        const micBtn = document.getElementById('micBtn'); 
         const autoLogToggle = document.getElementById('autoLogToggle'); 
         
         const realTimeDisplayEl = document.getElementById('realTimeDisplay'); 
@@ -330,6 +331,7 @@
         }
         
         function formatTime(date) {
+            // Returns time in HH:MM:SS format
             return date.toTimeString().split(' ')[0];
         }
 
@@ -359,13 +361,19 @@
         function updateLearningStatus() {
             learningStatusTopEl.innerHTML = 
                 `Total Rounds Logged: **${totalRounds}** | Logged Errors: **${errors}**`;
-            undoButton.disabled = history.length === 0;
+            // Ensure buttons are accessible before trying to disable
+            if (undoButton) {
+                undoButton.disabled = history.length === 0;
+            }
             
             const savedAutoLog = localStorage.getItem('aviator_autoLog');
-            autoLogToggle.checked = (savedAutoLog === 'true' || savedAutoLog === null);
+            if (autoLogToggle) {
+               autoLogToggle.checked = (savedAutoLog === 'true' || savedAutoLog === null);
+            }
         }
 
         function renderHistory() {
+            if (!historyListEl) return;
             historyListEl.innerHTML = history.map((item) => {
                 const zoneClass = getZoneClass(parseFloat(item.actual));
                 const itemCycleTime = getCycleTimeDisplay(item.cycleSecond);
@@ -387,8 +395,85 @@
             renderHistory();
         }
 
-        // --- RISK ASSESSMENT (HIGH JACKPOT SENSITIVITY) ---
+        // --- HANDLERS (RE-CHECKED) ---
+        
+        function updateInputValue(value) {
+             if (!roundInput) return;
+             roundInput.removeAttribute('readonly'); 
+             roundInput.value = value;
+             roundInput.setAttribute('readonly', 'readonly'); 
+        }
+
+        function logCurrentRound() {
+            if (!roundInput) return;
+             roundInput.removeAttribute('readonly'); 
+             const inputValue = parseFloat(roundInput.value); 
+             roundInput.setAttribute('readonly', 'readonly'); 
+             
+            if (isNaN(inputValue) || inputValue < 1.00) {
+                if (systemMessageEl) systemMessageEl.textContent = "Please enter a valid multiplier (>= 1.00).";
+                return;
+            }
+
+            totalRounds++;
+            const actual = inputValue.toFixed(2);
+            
+            const now = new Date();
+            const cycleSeconds = getCurrentCycleSeconds();
+            
+            const historyEntry = {
+                roundNum: totalRounds,
+                time: formatTime(now),
+                cycleSecond: cycleSeconds, 
+                actual: actual,
+                zone: getZoneClass(inputValue),
+            };
+            
+            history.unshift(historyEntry);
+            if (history.length > 50) { 
+                history.pop(); 
+            }
+
+            saveState();
+            if (systemMessageEl) systemMessageEl.textContent = `Round #${totalRounds} logged: ${actual}x.`;
+            updateInputValue(''); 
+        }
+
+        function undoButtonHandler() {
+            if (history.length > 0) {
+                const lastRound = history.shift(); 
+                
+                if (totalRounds > 0) {
+                    totalRounds--; 
+                }
+                
+                attempts++;
+                errors++; 
+                
+                saveState();
+                if (systemMessageEl) systemMessageEl.textContent = `Last Round (${lastRound.actual}x) **UNDONE**. Total: ${totalRounds}`;
+                updateInputValue(lastRound.actual); 
+            } else {
+                if (systemMessageEl) systemMessageEl.textContent = "No rounds to undo.";
+            }
+        }
+
+        function resetButtonHandler() {
+             if (confirm("ARE YOU SURE you want to DELETE ALL logged history and start from Round #1? This cannot be undone.")) {
+                localStorage.clear(); 
+                totalRounds = 0;
+                errors = 0; 
+                attempts = 0;
+                history = [];
+                saveState();
+                if (systemMessageEl) systemMessageEl.textContent = "Data Cleared. Start logging from Round #1.";
+            }
+        }
+        
+        // --- RISK ASSESSMENT & PREDICTION LOGIC (UNCHANGED) ---
+        
         function assessRiskByTime(currentCycleSecond) {
+            // ... (Assessment logic remains the same) ...
             const windowSize = TIME_WINDOW_FOR_LEARNING; 
             let redCount = 0; 
             let orangeCount = 0; 
@@ -439,10 +524,8 @@
             riskAssessmentEl.textContent = message;
         }
 
-        // --- UPCOMING ROUND PREDICTION LOGIC ---
-
         function predictUpcomingRounds(currentCycleSecond) {
-            if (history.length < 5) {
+             if (history.length < 5) {
                 predictionDisplayEl.textContent = "Log more rounds for Cycle Prediction.";
                 return;
             }
@@ -508,83 +591,10 @@
         }
 
 
-        // --- HANDLERS (UNCHANGED) ---
-
-        function updateInputValue(value) {
-             roundInput.removeAttribute('readonly'); 
-             roundInput.value = value;
-             roundInput.setAttribute('readonly', 'readonly'); 
-        }
-
-        function logCurrentRound() {
-             roundInput.removeAttribute('readonly'); 
-             const inputValue = parseFloat(roundInput.value); 
-             roundInput.setAttribute('readonly', 'readonly'); 
-             
-            if (isNaN(inputValue) || inputValue < 1.00) {
-                systemMessageEl.textContent = "Please enter a valid multiplier (>= 1.00).";
-                return;
-            }
-
-            totalRounds++;
-            const actual = inputValue.toFixed(2);
-            
-            const now = new Date();
-            const cycleSeconds = getCurrentCycleSeconds();
-            
-            const historyEntry = {
-                roundNum: totalRounds,
-                time: formatTime(now),
-                cycleSecond: cycleSeconds, 
-                actual: actual,
-                zone: getZoneClass(inputValue),
-            };
-            
-            history.unshift(historyEntry);
-            if (history.length > 50) { 
-                history.pop(); 
-            }
-
-            saveState();
-            systemMessageEl.textContent = `Round #${totalRounds} logged: ${actual}x.`;
-            updateInputValue(''); 
-        }
-
-        function undoButtonHandler() {
-            if (history.length > 0) {
-                const lastRound = history.shift(); 
-                
-                if (totalRounds > 0) {
-                    totalRounds--; 
-                }
-                
-                attempts++;
-                errors++; 
-                
-                saveState();
-                systemMessageEl.textContent = `Last Round (${lastRound.actual}x) **UNDONE**. Total: ${totalRounds}`;
-                updateInputValue(lastRound.actual); 
-            } else {
-                systemMessageEl.textContent = "No rounds to undo.";
-            }
-        }
-
-        function resetButtonHandler() {
-             if (confirm("ARE YOU SURE you want to DELETE ALL logged history and start from Round #1? This cannot be undone.")) {
-                localStorage.clear(); 
-                totalRounds = 0;
-                errors = 0; 
-                attempts = 0;
-                history = [];
-                saveState();
-                systemMessageEl.textContent = "Data Cleared. Start logging from Round #1.";
-            }
-        }
-        
-        // --- VOICE INPUT LOGIC (RE-CHECKED) ---
+        // --- VOICE INPUT LOGIC (CRITICAL RE-CHECK) ---
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-        if (SpeechRecognition) {
+        if (SpeechRecognition && micBtn) { // Ensure micBtn exists before adding listener
             const recognition = new SpeechRecognition();
             recognition.continuous = false;
             recognition.lang = 'en-US'; 
@@ -592,7 +602,7 @@
             micBtn.addEventListener('click', () => {
                 micBtn.style.backgroundColor = MIC_BUTTON_RECORDING_COLOR;
                 micBtn.textContent = '🔴 SPEAK';
-                systemMessageEl.textContent = "Listening...";
+                if (systemMessageEl) systemMessageEl.textContent = "Listening...";
                 recognition.start();
             });
 
@@ -606,14 +616,14 @@
                     let multiplier = parseFloat(numberMatch[0]).toFixed(2);
                     updateInputValue(multiplier); 
                     
-                    if (autoLogToggle.checked) {
-                        systemMessageEl.textContent = `Voice Received: ${multiplier}x. Auto-Logging...`;
+                    if (autoLogToggle && autoLogToggle.checked) {
+                        if (systemMessageEl) systemMessageEl.textContent = `Voice Received: ${multiplier}x. Auto-Logging...`;
                         logCurrentRound(); 
                     } else {
-                        systemMessageEl.textContent = `Voice Received: ${multiplier}x. Press LOG ROUND RESULT to save.`;
+                        if (systemMessageEl) systemMessageEl.textContent = `Voice Received: ${multiplier}x. Press LOG ROUND RESULT to save.`;
                     }
                 } else {
-                     systemMessageEl.textContent = "Could not understand. Try again or manually enter.";
+                    if (systemMessageEl) systemMessageEl.textContent = "Could not understand. Try again or manually enter.";
                 }
             };
             recognition.onspeechend = () => {
@@ -625,29 +635,31 @@
                 micBtn.style.backgroundColor = MIC_BUTTON_DEFAULT_COLOR; 
                 micBtn.textContent = '🎤';
                 console.error('Speech Recognition Error:', event.error);
-                systemMessageEl.textContent = "Voice error or timeout. Try again. (Check browser console for details).";
+                if (systemMessageEl) systemMessageEl.textContent = "Voice error or timeout. Try again. (Check browser console for details).";
             };
 
-        } else {
+        } else if (micBtn) {
             micBtn.style.display = 'none';
-            systemMessageEl.textContent = "Speech Recognition not supported by your browser.";
+            if (systemMessageEl) systemMessageEl.textContent = "Speech Recognition not supported by your browser.";
         }
         
-        // --- ATTACH EVENT LISTENERS (CRITICAL STEP FOR BUTTONS) ---
-        logButton.addEventListener('click', logCurrentRound);
-        undoButton.addEventListener('click', undoButtonHandler);
-        resetButton.addEventListener('click', resetButtonHandler);
+        // --- ATTACH EVENT LISTENERS (FINAL, CRITICAL STEP) ---
+        if (logButton) logButton.addEventListener('click', logCurrentRound);
+        if (undoButton) undoButton.addEventListener('click', undoButtonHandler);
+        if (resetButton) resetButton.addEventListener('click', resetButtonHandler);
         
-        autoLogToggle.addEventListener('change', () => {
-            localStorage.setItem('aviator_autoLog', autoLogToggle.checked);
-            systemMessageEl.textContent = `Voice Auto-Log is now ${autoLogToggle.checked ? 'ON' : 'OFF'}.`;
-        });
+        if (autoLogToggle) {
+             autoLogToggle.addEventListener('change', () => {
+                localStorage.setItem('aviator_autoLog', autoLogToggle.checked);
+                if (systemMessageEl) systemMessageEl.textContent = `Voice Auto-Log is now ${autoLogToggle.checked ? 'ON' : 'OFF'}.`;
+            });
+        }
         
         // Initialization
         setInterval(updateClock, 1000); 
         updateLearningStatus();
         renderHistory();
-        updateClock(); // Run immediately on load
+        updateClock(); 
     </script>
 </body>
 </html>
