@@ -75,6 +75,10 @@
             background-color: #2196F3;
             color: white;
             margin-bottom: 20px;
+            /* Flex properties for alignment */
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         #clockDisplay {
             text-align: center;
@@ -215,7 +219,6 @@
         const CYCLE_SECONDS = 720; 
         let history = JSON.parse(localStorage.getItem('aviator_history') || '[]');
         
-        // Variables kuhifadhi matokeo ya uchambuzi wa streak kwa matumizi ya Adaptive Prediction
         let currentRedStreak = 0;
         let currentRoundsSinceJackpot = 0;
         let lastPredictionConfidence = 0; 
@@ -225,7 +228,7 @@
         
         const roundInput = document.getElementById('roundInput'); 
         const mainButton = document.getElementById('mainButton'); 
-        const micBtn = document.getElementById('micBtn'); // NEW: Defined micBtn
+        const micBtn = document.getElementById('micBtn');
         const clockDisplay = document.getElementById('clockDisplay');
         const predictionResultEl = document.getElementById('predictionResult');
         const zoneStatusEl = document.getElementById('zoneStatus');
@@ -385,7 +388,6 @@
             let roundsSinceJackpot = 0;
             let jackpotFound = false;
 
-            // 1. Red Streak Count (Consecutive < 2.00x)
             for (let i = 0; i < history.length; i++) {
                 const actual = parseFloat(history[i].actual);
                 if (actual < 2.00) {
@@ -396,7 +398,6 @@
             }
             currentRedStreak = redStreakCount; 
             
-            // 2. Rounds Since Jackpot Count (Rounds since >= 10.00x)
             for (let i = 0; i < history.length; i++) {
                 const actual = parseFloat(history[i].actual);
                 if (actual >= 10.00) {
@@ -459,10 +460,9 @@
         if (SpeechRecognition) {
             const recognition = new SpeechRecognition();
             recognition.continuous = false;
-            recognition.lang = 'en-US'; // Leave as English for better number recognition
-            micBtn.style.backgroundColor = MIC_BUTTON_DEFAULT_COLOR;
-
-            let isRecording = false; // New flag to prevent multiple starts
+            recognition.lang = 'en-US'; 
+            
+            let isRecording = false;
 
             micBtn.addEventListener('click', () => {
                 if (!isRecording) {
@@ -473,13 +473,19 @@
                 }
             });
 
+            recognition.onstart = () => {
+                micBtn.style.backgroundColor = MIC_BUTTON_RECORDING_COLOR;
+                micBtn.textContent = '🔴 TALK';
+                isRecording = true;
+                predictionResultEl.textContent = "Sema namba (mfano, 'one point five')...";
+            };
+
             recognition.onresult = (event) => {
                 const result = event.results[0][0].transcript;
-                // Regex to find any number or number with decimal (e.g., 1.50, 8.23)
+                // Regex to find any number or number with decimal
                 const numberMatch = result.match(/(\d+\.?\d*)/); 
 
                 if (numberMatch) {
-                    // Ensures the number is formatted correctly (e.g., 1.50)
                     roundInput.value = parseFloat(numberMatch[0]).toFixed(2);
                     predictionResultEl.textContent = "Sauti Imepokelewa. Bonyeza kitufe cha kijani kutabiri.";
                 } else {
@@ -492,19 +498,14 @@
                 micBtn.textContent = '🎤';
                 isRecording = false;
             };
-
-            recognition.onspeechend = () => {
-                recognition.stop();
-                // Reset is handled by onend
-            };
             
-            recognition.onend = resetMicButton; // Ensure the button resets after the process
+            recognition.onend = resetMicButton; 
             
             recognition.onerror = (event) => {
                 resetMicButton();
                 console.error('Speech Recognition Error:', event.error);
-                if (event.error === 'not-allowed') {
-                     predictionResultEl.textContent = "❌ Ruhusa ya Microphone haijatolewa au imekataliwa na kivinjari.";
+                if (event.error === 'not-allowed' || event.error === 'permission-denied') {
+                     predictionResultEl.textContent = "❌ Ruhusa ya Microphone haijatolewa. Tafadhali rudisha ruhusa za kivinjari.";
                 } else if (event.error === 'no-speech') {
                      predictionResultEl.textContent = "❌ Sikupata sauti yoyote. Jaribu tena.";
                 } else {
@@ -514,7 +515,10 @@
 
         } else {
             micBtn.style.display = 'none';
-            predictionResultEl.textContent = "❌ Kivinjari chako hakiruhusu Input ya Sauti.";
+            // Show a fallback message if API is not supported
+            document.querySelector('.container').insertAdjacentHTML('afterbegin', 
+                '<div style="color:#FFC107; text-align:center; padding:10px;">Kivinjari Hakitumii Input ya Sauti. Tafadhali ingiza namba kwa mkono.</div>'
+            );
         }
         // --- END FIXED VOICE INPUT LOGIC ---
 
@@ -536,16 +540,13 @@
                 return;
             }
 
-            // 1. Tambua matokeo ya raundi iliyopita 
             const lastRoundEntry = history.length > 0 ? history[0] : null;
             const lastRoundActual = lastRoundEntry ? lastRoundEntry.actual : '1.00'; 
             
-            // 2. Tabiri raundi inayofuata KWA KUTUMIA data ya streaks
             const predictedNext = predictMultiplier(actualValue);
             const predictedMultiplier = parseFloat(predictedNext);
             const currentZone = getZone(predictedMultiplier);
 
-            // 3. Hifadhi matokeo halisi ya sasa (Logging)
             const historyEntry = {
                 time: formatTime(new Date()),
                 cycleTime: getCycleTimeDisplay(getCurrentCycleSeconds()),
@@ -557,16 +558,13 @@
             };
             updateHistory(historyEntry);
 
-            // 4. SASISHA STREAK ANALYSIS & CONFIDENCE
             calculateStreakAnalysis();
             calculateConfidence();
 
-            // 5. Onyesha Utabiri
             predictionResultEl.innerHTML = `NEXT PREDICTION: <span style="color:#FFC107;">${predictedNext}x</span>`;
             zoneStatusEl.className = `zone-status ${getZoneClass(predictedMultiplier)}`;
             zoneStatusEl.textContent = `Utabiri Huu ni: ${currentZone}`;
             
-            // 6. Weka matokeo halisi yaliyokamilika kwenye input field
             roundInput.value = actualValue.toFixed(2); 
 
         });
