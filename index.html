@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aviator Prediction Simulator (ADAPTIVE & CONFIDENCE)</title>
+    <title>Aviator Prediction Simulator (ADAPTIVE & PATTERN ANALYSIS)</title>
     <style>
         /* CSS YA UREMBO */
         body {
@@ -75,7 +75,6 @@
             background-color: #2196F3;
             color: white;
             margin-bottom: 20px;
-            /* Flex properties for alignment */
             display: flex;
             align-items: center;
             justify-content: center;
@@ -147,6 +146,7 @@
         .warning { color: #E57373; }
         .success { color: #8BC34A; }
         .pending { color: #FFC107; }
+        .orange { color: #FF9800; } /* Added for Pattern Found */
 
 
         #historyLog {
@@ -220,7 +220,6 @@
         let history = JSON.parse(localStorage.getItem('aviator_history') || '[]');
         
         let currentRedStreak = 0;
-        let currentRoundsSinceJackpot = 0;
         let lastPredictionConfidence = 0; 
         
         const MIC_BUTTON_DEFAULT_COLOR = '#2196F3'; 
@@ -279,7 +278,7 @@
             }).join('');
         }
 
-        // --- CONFIDENCE SCORE CALCULATION ---
+        // --- CONFIDENCE SCORE CALCULATION (INCLUDING PATTERN CHECK) ---
         function calculateConfidence() {
             const currentCycleSecond = getCurrentCycleSeconds();
             const windowSize = 30;
@@ -295,8 +294,15 @@
             const maxPoints = 20; 
             let confidence = Math.min(100, (totalCount / maxPoints) * 100);
             
+            // Adaptive Confidence: Streak ndefu huongeza confidence
             if (currentRedStreak > 5) {
                 confidence = Math.min(100, confidence + 10); 
+            }
+
+            // Adaptive Confidence: PATTERN Found huongeza Confidence
+            const patternEl = document.getElementById('jackpotWait');
+            if (patternEl && patternEl.className === 'orange') {
+                confidence = Math.min(100, confidence + 15); // +15% kwa Pattern
             }
             
             lastPredictionConfidence = confidence.toFixed(0);
@@ -310,16 +316,19 @@
         }
 
 
-        // --- ADAPTIVE PREDICTION ---
+        // --- ADAPTIVE PREDICTION (INCLUDING PATTERN LOGIC) ---
         function predictMultiplier(last) {
             let prediction;
             let adaptiveFactor = 0;
+            const patternEl = document.getElementById('jackpotWait');
 
-            // 1. Tweak factor based on streaks
-            if (currentRedStreak >= 4) {
+            // 1. Tweak factor based on streaks and PATTERN
+            if (patternEl && patternEl.className === 'orange') {
+                 // Pattern Found: Tweak more aggressively towards a big multiplier
+                adaptiveFactor = 3.0; 
+            } else if (currentRedStreak >= 4) {
+                 // Red Streak: Tweak normally 
                 adaptiveFactor = 0.5 + (currentRedStreak * 0.1); 
-            } else if (currentRoundsSinceJackpot > 30) {
-                adaptiveFactor = 1.0; 
             }
 
             // 2. Base Prediction Logic
@@ -331,15 +340,18 @@
                 prediction = (Math.random() * 0.5 + 1.0); 
             }
             
-            // 3. Apply Adaptive Factor
-            if (prediction < 2.0) {
+            // 3. Apply Adaptive Factor (Modified to handle pattern factor)
+            if (adaptiveFactor > 2.0) { // If pattern factor is applied (i.e., Pattern Found)
+                // Predict between 5.0x and 10.0x or higher
+                prediction = (Math.random() * 7.0) + 5.0; 
+            } else if (prediction < 2.0) {
                 prediction += adaptiveFactor;
             }
             
             return Math.max(1.01, prediction).toFixed(2);
         }
 
-        // --- RISK ASSESSMENT FUNCTION ---
+        // --- RISK ASSESSMENT FUNCTION (Time Window Analysis) ---
         function assessRiskByTime(currentCycleSecond) {
             const windowSize = 30; 
             let redCount = 0;
@@ -382,12 +394,15 @@
             riskAssessmentEl.textContent = message;
         }
 
-        // --- STREAK ANALYSIS LOGIC ---
+        // --- STREAK & PATTERN ANALYSIS LOGIC ---
         function calculateStreakAnalysis() {
             let redStreakCount = 0;
-            let roundsSinceJackpot = 0;
-            let jackpotFound = false;
+            const recentHistory = history.slice(0, 10); // Angalia raundi 10 za mwisho
+            let lowCount = 0;   
+            let midSkipCount = 0;
+            let jackpotPatternFound = false;
 
+            // 1. Red Streak Count (Consecutive < 2.00x)
             for (let i = 0; i < history.length; i++) {
                 const actual = parseFloat(history[i].actual);
                 if (actual < 2.00) {
@@ -398,15 +413,29 @@
             }
             currentRedStreak = redStreakCount; 
             
-            for (let i = 0; i < history.length; i++) {
-                const actual = parseFloat(history[i].actual);
-                if (actual >= 10.00) {
-                    jackpotFound = true;
-                    break; 
+            // 2. Analyze Recent Pattern (Raundi 10 za Mwisho)
+            if (recentHistory.length >= 5) {
+                for (const item of recentHistory) {
+                    const actual = parseFloat(item.actual);
+                    if (actual < 2.00) {
+                        lowCount++;
+                    }
+                    if (actual >= 3.00 && actual < 10.00) {
+                        midSkipCount++;
+                    }
                 }
-                roundsSinceJackpot++;
+                
+                // Pattern 1: Low Density Check (LowCount >= 70% of 10 rounds = 7)
+                const isLowDensity = lowCount >= 7; 
+                // Pattern 2: Mid Skip Check (Hakuna Mid Multiplier)
+                const isMidSkip = midSkipCount === 0;
+
+                // CONFIRM PATTERN FOR BIG MULTIPLIER/JACKPOT
+                if (isLowDensity && isMidSkip) {
+                    jackpotPatternFound = true;
+                }
             }
-            currentRoundsSinceJackpot = roundsSinceJackpot; 
+
 
             // Update UI elements
             const redStreakEl = document.getElementById('redStreak');
@@ -420,16 +449,13 @@
                 redStreakEl.innerHTML = `✅ Red Streak: ${redStreakCount} raundi mfululizo.`;
             }
 
-            if (jackpotFound) {
-                jackpotWaitEl.className = 'pending';
-                jackpotWaitEl.innerHTML = `⌛ Wait: ${roundsSinceJackpot} raundi tangu Jackpot ya mwisho (10.00x+).`;
-                if (roundsSinceJackpot > 20) {
-                    jackpotWaitEl.className = 'success'; 
-                    jackpotWaitEl.innerHTML = `🟢 Wait: ${roundsSinceJackpot} raundi tangu Jackpot. Muda wa **kusubiri umefika!**`;
-                }
+            // UJUMBE MPYA WA PATTERN
+            if (jackpotPatternFound) {
+                jackpotWaitEl.className = 'orange';
+                jackpotWaitEl.innerHTML = `✨ PATTERN IMETAMBULIKA! Mazingira tayari kwa Jackpot/Big Multiplier (Low Density & Mid-Skip).`;
             } else {
-                jackpotWaitEl.className = 'warning';
-                jackpotWaitEl.innerHTML = `❌ Historia haina Jackpot (10.00x+).`;
+                jackpotWaitEl.className = 'pending';
+                jackpotWaitEl.innerHTML = `🔎 Inachambua mipangilio (patterns) 10 za mwisho...`;
             }
         }
 
@@ -442,7 +468,6 @@
             localStorage.removeItem('aviator_history');
             history = [];
             currentRedStreak = 0;
-            currentRoundsSinceJackpot = 0;
             lastPredictionConfidence = 0;
             
             renderHistory();
@@ -482,7 +507,6 @@
 
             recognition.onresult = (event) => {
                 const result = event.results[0][0].transcript;
-                // Regex to find any number or number with decimal
                 const numberMatch = result.match(/(\d+\.?\d*)/); 
 
                 if (numberMatch) {
@@ -515,7 +539,6 @@
 
         } else {
             micBtn.style.display = 'none';
-            // Show a fallback message if API is not supported
             document.querySelector('.container').insertAdjacentHTML('afterbegin', 
                 '<div style="color:#FFC107; text-align:center; padding:10px;">Kivinjari Hakitumii Input ya Sauti. Tafadhali ingiza namba kwa mkono.</div>'
             );
@@ -565,7 +588,8 @@
             zoneStatusEl.className = `zone-status ${getZoneClass(predictedMultiplier)}`;
             zoneStatusEl.textContent = `Utabiri Huu ni: ${currentZone}`;
             
-            roundInput.value = actualValue.toFixed(2); 
+            // ⭐️ MAREKEBISHO YA INPUT FIELD: Futa thamani iliyopita 
+            roundInput.value = ''; 
 
         });
 
